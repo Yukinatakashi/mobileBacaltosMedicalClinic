@@ -1,5 +1,10 @@
+// server.js (root)
 const express = require('express');
 const cors = require('cors');
+
+// Load .env from root (no need for path hacks if .env is here)
+require('dotenv').config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -26,8 +31,7 @@ app.get('/', (req, res) => {
     endpoints: [
       'GET / - Root endpoint',
       'GET /health - Health check',
-      'GET /api - API information',
-      'GET /api/sample - Sample routes'
+      'GET /api - API information'
     ]
   });
 });
@@ -39,17 +43,18 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     endpoints: [
       'GET /health - Health check',
-      'GET /api - API information',
-      'GET /api/sample - Sample routes'
+      'GET /api - API information'
     ]
   });
 });
 
-// Import API routes
-const sampleRoutes = require('./src/api/routes/sample');
+// Import API routes (now correct because server.js is in root)
+const loginRoutes = require('./src/api/routes/admin/loginuser.route');
+const registerRoutes = require('./src/api/routes/admin/registeruser.route');
 
 // Mount API routes
-app.use('/api', sampleRoutes);
+app.use('/api/admin/login', loginRoutes);  // <-- admin login route
+app.use('/api/register', registerRoutes); // <-- public register
 
 // Error handling middleware
 app.use((err, req, res, next) => {
