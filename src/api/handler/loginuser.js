@@ -2,26 +2,27 @@
 const { supabase } = require('../../services/supabasebackend.js');
 
 const loginUser = async (req, res) => {
-  const { email, password, role } = req.body;
+  const { email, password } = req.body;
 
-  if (!email || !password || !role) {
-    return res.status(400).json({ error: 'Email, password, and role are required' });
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
   }
 
   try {
     // Step 1: Auth check
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: email.toLowerCase().trim(),
+      password: password.trim(),
     });
 
     if (error || !data?.user) {
+      console.error('[loginuser.handler] Auth error:', error?.message || 'Unknown auth error');
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const user = data.user;
 
-    // Step 2: Role check
+    // Step 2: Fetch user details from DB
     const { data: dbUser, error: roleError } = await supabase
       .from('users')
       .select('id, email, role')
@@ -29,11 +30,9 @@ const loginUser = async (req, res) => {
       .single();
 
     if (roleError || !dbUser) {
-      return res.status(403).json({ error: 'User role not found' });
-    }
-
-    if (dbUser.role !== role) {
-      return res.status(403).json({ error: 'Unauthorized role' });
+      console.error('[loginuser.handler] DB fetch error:', roleError?.message || 'User not found in DB');
+      // Don't reveal if it's a DB issue or auth issue for security
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Step 3: Return clean payload
@@ -47,8 +46,8 @@ const loginUser = async (req, res) => {
       session: data.session, // contains access_token & refresh_token
     });
   } catch (err) {
-    console.error('[loginuser.handler] Error:', err);
-    return res.status(500).json({ error: err.message || 'Login failed' });
+    console.error('[loginuser.handler] Unexpected error:', err);
+    return res.status(500).json({ error: 'Login failed' });
   }
 };
 
