@@ -16,7 +16,7 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
-    message: 'Medical App API is running',
+    message: 'Medical App API is running - pretty yukina',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
