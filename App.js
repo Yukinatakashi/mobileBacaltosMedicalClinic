@@ -2,7 +2,10 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import PatientHomepage from './src/components/patient/PatientHomepage';
+
+// ✅ Properly named imports
+import PatientLogin from './src/components/patient/PatientLogin';
+import PatientRegister from './src/components/patient/PatientRegister';
 
 const Stack = createNativeStackNavigator();
 
@@ -11,7 +14,8 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="auto" />
       <Stack.Navigator
-        initialRouteName="PatientHomepage"
+        // 👇 start at login
+        initialRouteName="Login"
         screenOptions={{
           headerStyle: {
             backgroundColor: '#3498db',
@@ -23,12 +27,14 @@ export default function App() {
         }}
       >
         <Stack.Screen 
-          name="PatientHomepage" 
-          component={PatientHomepage}
-          options={{ 
-            title: 'Medical App',
-            headerShown: false 
-          }} 
+          name="Login" 
+          component={PatientLogin} 
+          options={{ title: 'Login' }} 
+        />
+        <Stack.Screen 
+          name="Register" 
+          component={PatientRegister} 
+          options={{ title: 'Register' }} 
         />
       </Stack.Navigator>
     </NavigationContainer>

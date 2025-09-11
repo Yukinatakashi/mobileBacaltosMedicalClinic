@@ -53,8 +53,8 @@ const loginRoutes = require('./src/api/routes/admin/loginuser.route');
 const registerRoutes = require('./src/api/routes/admin/registeruser.route');
 
 // Mount API routes
-app.use('/api/admin/login', loginRoutes);  // <-- admin login route
-app.use('/api/register', registerRoutes); // <-- public register
+app.use('/login', loginRoutes);  // <--  login route
+app.use('/register', registerRoutes); // <-- public register
 
 // Error handling middleware
 app.use((err, req, res, next) => {

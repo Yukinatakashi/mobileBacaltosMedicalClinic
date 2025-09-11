@@ -1,18 +1,33 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { API_BASE_URL } from '../../api';
+import axios from 'axios';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import API_BASE_URL from '../../api';
 
+// Define the Stack Navigator's param list
+type RootStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
+// Define the expected shape of the login response
 type LoginSuccess = {
   message?: string;
-  user?: unknown;
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+  };
+  session?: {
+    access_token: string;
+    refresh_token: string;
+  };
 };
 
-type Props = {
-  onSuccess?: (data: LoginSuccess) => void;
-  onNavigateRegister?: () => void;
-};
+// Define the props type for the Login screen
+type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
-export default function PatientLogin({ onSuccess, onNavigateRegister }: Props) {
+export default function PatientLogin({ navigation }: Props) {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -23,18 +38,21 @@ export default function PatientLogin({ onSuccess, onNavigateRegister }: Props) {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: 'patient' }),
+      const res = await axios.post<LoginSuccess>(`${API_BASE_URL}/login`, {
+        email,
+        password,
+        role: 'patient',
       });
-      const data = (await res.json()) as LoginSuccess & { error?: string };
-      if (!res.ok) {
-        throw new Error(data?.error || 'Login failed');
-      }
-      onSuccess && onSuccess(data);
-    } catch (e: any) {
-      setError(e.message);
+
+      // Handle successful login (e.g., store tokens, navigate elsewhere)
+      // For now, we'll just clear the form
+      setEmail('');
+      setPassword('');
+      // Optionally navigate to a dashboard or home screen
+      // navigation.navigate('SomeDashboard'); // Uncomment if you add a dashboard screen
+
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
@@ -65,14 +83,18 @@ export default function PatientLogin({ onSuccess, onNavigateRegister }: Props) {
         />
       </View>
       <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-        <Text style={{ color: '#2563eb', marginBottom: 16 }}>{showPassword ? 'Hide password' : 'Show password'}</Text>
+        <Text style={{ color: '#2563eb', marginBottom: 16 }}>
+          {showPassword ? 'Hide password' : 'Show password'}
+        </Text>
       </TouchableOpacity>
 
-      {!!error && (
-        <Text style={{ color: '#b91c1c', marginBottom: 12 }}>{error}</Text>
-      )}
+      {!!error && <Text style={{ color: '#b91c1c', marginBottom: 12 }}>{error}</Text>}
 
-      <TouchableOpacity onPress={handleLogin} disabled={loading} style={{ backgroundColor: loading ? '#9ca3af' : '#2563eb', paddingVertical: 14, borderRadius: 10, alignItems: 'center' }}>
+      <TouchableOpacity
+        onPress={handleLogin}
+        disabled={loading}
+        style={{ backgroundColor: loading ? '#9ca3af' : '#2563eb', paddingVertical: 14, borderRadius: 10, alignItems: 'center' }}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -80,12 +102,12 @@ export default function PatientLogin({ onSuccess, onNavigateRegister }: Props) {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={onNavigateRegister} style={{ marginTop: 16, alignItems: 'center' }}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Register')}
+        style={{ marginTop: 16, alignItems: 'center' }}
+      >
         <Text style={{ color: '#2563eb' }}>New here? Create an account</Text>
       </TouchableOpacity>
     </View>
   );
 }
-
-
-
