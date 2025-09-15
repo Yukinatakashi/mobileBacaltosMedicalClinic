@@ -23,7 +23,7 @@ export default function PatientLogin({ navigation }) {
 
       setEmail('');
       setPassword('');
-      navigation.replace('PatientDashboard');
+      navigation.replace('PatientDashboard', { user: res.data.user });
 
     } catch (err) {
       setError(err.response?.data?.error || err.message);

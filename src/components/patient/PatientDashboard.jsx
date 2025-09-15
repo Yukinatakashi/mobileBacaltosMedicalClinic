@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -28,9 +28,49 @@ import {
 
 const { width } = Dimensions.get('window');
 
-export default function PatientDashboard() {
+export default function PatientDashboard({ route }) {
+  const { user } = route.params || {};
   const [greeting, setGreeting] = useState('Good Morning');
-  const [patientName] = useState('Sarah');
+  const [patientName, setPatientName] = useState('Patient');
+
+  // Helper function to get time-based greeting
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  // Helper function to extract name from email
+  const getNameFromEmail = (email) => {
+    if (!email) return 'Patient';
+    const name = email.split('@')[0];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+
+  // Helper function to get role-based subtitle
+  const getRoleBasedSubtitle = (role) => {
+    switch (role) {
+      case 'patient':
+        return 'How are you feeling today?';
+      case 'doctor':
+        return 'Ready to help your patients?';
+      case 'admin':
+        return 'Manage your healthcare system';
+      default:
+        return 'Welcome to your dashboard!';
+    }
+  };
+
+  // Update greeting and name when component mounts or user changes
+  useEffect(() => {
+    if (user && user.email) {
+      setPatientName(getNameFromEmail(user.email));
+    } else {
+      setPatientName('Patient');
+    }
+    setGreeting(getTimeBasedGreeting());
+  }, [user]);
 
   const quickActions = [
     { icon: Calendar, title: 'Book Appointment', color: '#0ea5e9', bgColor: '#e0f2fe' },
@@ -80,7 +120,14 @@ export default function PatientDashboard() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.greeting}>{greeting}, {patientName}! ✨</Text>
-              <Text style={styles.headerSubtitle}>How are you feeling today?</Text>
+              <Text style={styles.headerSubtitle}>
+                {getRoleBasedSubtitle(user?.role)}
+              </Text>
+              {user?.email && (
+                <Text style={styles.userEmail}>
+                  {user.email}
+                </Text>
+              )}
             </View>
             <TouchableOpacity style={styles.notificationButton}>
               <Bell size={24} color="#fff" />
@@ -252,6 +299,12 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  userEmail: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   notificationButton: {
     width: 44,
