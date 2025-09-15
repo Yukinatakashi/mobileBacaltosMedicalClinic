@@ -6,7 +6,10 @@ import {
   ScrollView, 
   Image, 
   StyleSheet,
-  Dimensions 
+  Dimensions,
+  Alert,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { 
   Calendar,
@@ -23,15 +26,49 @@ import {
   ChevronRight,
   Star,
   Shield,
-  MessageCircle
+  MessageCircle,
+  LogOut
 } from 'lucide-react-native';
+import { supabase } from '../../services/supabasefrontend';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-export default function PatientDashboard({ route }) {
+// Get status bar height for different devices
+const getStatusBarHeight = () => {
+  if (Platform.OS === 'ios') {
+    // iPhone X and newer have different status bar heights
+    if (height >= 812) {
+      return 44; // iPhone X, XS, XR, 11, 12, 13, 14, 15 series
+    } else {
+      return 20; // Older iPhones
+    }
+  } else if (Platform.OS === 'android') {
+    return StatusBar.currentHeight || 24; // Android status bar height
+  } else if (Platform.OS === 'web') {
+    return 0; // Web doesn't have a status bar
+  }
+  return 24; // Default fallback
+};
+
+// Get responsive padding based on device type
+const getResponsivePadding = () => {
+  if (Platform.OS === 'web') {
+    return 16; // Web padding
+  } else if (width < 375) {
+    return 16; // Small phones
+  } else if (width < 414) {
+    return 20; // Medium phones
+  } else {
+    return 24; // Large phones and tablets
+  }
+};
+
+export default function PatientDashboard({ route, navigation }) {
   const { user } = route.params || {};
   const [greeting, setGreeting] = useState('Good Morning');
   const [patientName, setPatientName] = useState('Patient');
+  const statusBarHeight = getStatusBarHeight();
+  const responsivePadding = getResponsivePadding();
 
   // Helper function to get time-based greeting
   const getTimeBasedGreeting = () => {
@@ -59,6 +96,96 @@ export default function PatientDashboard({ route }) {
         return 'Manage your healthcare system';
       default:
         return 'Welcome to your dashboard!';
+    }
+  };
+
+  // Logout function with web compatibility
+  const handleLogout = () => {
+    // Use native confirm for web, Alert for mobile
+    const confirmLogout = () => {
+      if (Platform.OS === 'web') {
+        return window.confirm('Are you sure you want to logout?');
+      } else {
+        return new Promise((resolve) => {
+          Alert.alert(
+            'Logout',
+            'Are you sure you want to logout?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => resolve(false),
+              },
+              {
+                text: 'Logout',
+                style: 'destructive',
+                onPress: () => resolve(true),
+              },
+            ]
+          );
+        });
+      }
+    };
+
+    const performLogout = async () => {
+      try {
+        // Sign out from Supabase
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          console.error('Logout error:', error.message);
+          const errorMessage = 'There was an error logging out. Please try again.';
+          if (Platform.OS === 'web') {
+            alert(errorMessage);
+          } else {
+            Alert.alert('Logout Error', errorMessage);
+          }
+          return;
+        }
+
+        // Additional cleanup for web
+        if (Platform.OS === 'web') {
+          // Clear any additional web storage if needed
+          try {
+            localStorage.removeItem('user_session');
+            sessionStorage.clear();
+          } catch (e) {
+            console.log('Web storage cleanup completed');
+          }
+        }
+
+        // Navigate back to login screen
+        // Use replace for web compatibility, reset for mobile
+        if (Platform.OS === 'web') {
+          navigation.replace('Login');
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        }
+      } catch (err) {
+        console.error('Logout error:', err);
+        const errorMessage = 'There was an error logging out. Please try again.';
+        if (Platform.OS === 'web') {
+          alert(errorMessage);
+        } else {
+          Alert.alert('Logout Error', errorMessage);
+        }
+      }
+    };
+
+    // Handle confirmation based on platform
+    if (Platform.OS === 'web') {
+      if (confirmLogout()) {
+        performLogout();
+      }
+    } else {
+      confirmLogout().then((confirmed) => {
+        if (confirmed) {
+          performLogout();
+        }
+      });
     }
   };
 
@@ -114,9 +241,9 @@ export default function PatientDashboard({ route }) {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: statusBarHeight + 20 }]}>
         <View style={styles.backgroundDecoration} />
-        <View style={styles.headerContent}>
+        <View style={[styles.headerContent, { paddingHorizontal: responsivePadding }]}>
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.greeting}>{greeting}, {patientName}! ✨</Text>
@@ -129,10 +256,19 @@ export default function PatientDashboard({ route }) {
                 </Text>
               )}
             </View>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Bell size={24} color="#fff" />
-              <View style={styles.notificationDot} />
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity style={styles.notificationButton}>
+                <Bell size={24} color="#fff" />
+                <View style={styles.notificationDot} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.logoutButton} 
+                onPress={handleLogout}
+                {...(Platform.OS === 'web' && { title: 'Logout' })}
+              >
+                <LogOut size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
           
           <View style={styles.logoContainer}>
@@ -145,7 +281,7 @@ export default function PatientDashboard({ route }) {
         </View>
       </View>
 
-      <View style={styles.section}>
+      <View style={[styles.section, { paddingHorizontal: responsivePadding }]}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActionsGrid}>
           {quickActions.map((action, index) => (
@@ -159,7 +295,7 @@ export default function PatientDashboard({ route }) {
         </View>
       </View>
 
-      <View style={styles.section}>
+      <View style={[styles.section, { paddingHorizontal: responsivePadding }]}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Today's Health Summary</Text>
           <TouchableOpacity>
@@ -190,7 +326,7 @@ export default function PatientDashboard({ route }) {
         </View>
       </View>
 
-      <View style={styles.section}>
+      <View style={[styles.section, { paddingHorizontal: responsivePadding }]}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
           <TouchableOpacity>
@@ -221,7 +357,7 @@ export default function PatientDashboard({ route }) {
         ))}
       </View>
 
-      <View style={styles.section}>
+      <View style={[styles.section, { paddingHorizontal: responsivePadding }]}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
         {recentActivity.map((activity, index) => (
           <TouchableOpacity key={index} style={styles.activityItem}>
@@ -266,11 +402,11 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#0ea5e9',
-    paddingTop: 50,
     paddingBottom: 30,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     overflow: 'hidden',
+    minHeight: 200, // Ensure minimum header height
   },
   backgroundDecoration: {
     position: 'absolute',
@@ -289,6 +425,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 20,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   greeting: {
     fontSize: 24,
@@ -314,6 +455,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  logoutButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(220, 38, 38, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.3)',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: 'rgba(220, 38, 38, 0.3)',
+        transform: 'scale(1.05)',
+      },
+    }),
   },
   notificationDot: {
     position: 'absolute',
